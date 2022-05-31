@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Unity.Netcode;
 
-enum PlayerTurn
+public enum PlayerTurn : byte
 {
     whiteMove,
     whiteAttack,
@@ -12,19 +13,19 @@ enum PlayerTurn
     blackAttack
 }
 
-public enum PlayerSide
+public enum PlayerSide : byte
 {
     white,
     black
 }
 
-public enum TurnType
+public enum TurnType : byte
 {
     move,
     attack
 }
 
-public class Game : MonoBehaviour
+public class Game : NetworkBehaviour
 {
     //Reference from Unity IDE
     public GameObject chesspiece;
@@ -37,10 +38,12 @@ public class Game : MonoBehaviour
     private GameObject[] playerWhite;
 
     //current turn
-    private PlayerTurn currentTurn = PlayerTurn.whiteMove;
+    private PlayerTurn currentTurn { get => (PlayerTurn)net_currentTurn.Value; set => net_currentTurn.Value = (byte)value; }
+    private NetworkVariable<byte> net_currentTurn = new((byte)PlayerTurn.whiteMove);
 
     //Game Ending
-    private bool gameOver = false;
+    private bool gameOver { get => net_gameOver.Value; set => net_gameOver.Value = value; }
+    private NetworkVariable<bool> net_gameOver = new(false);
 
     //Unity calls this right when the game starts, there are a few built in functions
     //that Unity can call for you
@@ -75,8 +78,8 @@ public class Game : MonoBehaviour
         GameObject obj = Instantiate(chesspiece, new Vector3(0, 0, -1), Quaternion.identity);
         Chessman cm = obj.GetComponent<Chessman>(); //We have access to the GameObject, we need the script
         cm.name = name; //This is a built in variable that Unity has, so we did not have to declare it before
-        cm.SetXBoard(x);
-        cm.SetYBoard(y);
+        cm.SetCoords(x, y);
+        obj.GetComponent<NetworkObject>().Spawn();
         cm.Activate(); //It has everything set up so it can now Activate()
         return obj;
     }
@@ -142,6 +145,12 @@ public class Game : MonoBehaviour
 
     public void NextTurn()
     {
+        if (!NetworkManager.Singleton.IsServer)
+        {
+            Debug.LogError($"Call to {nameof(NextTurn)} from non-server");
+            return;
+        }
+
         if (currentTurn == PlayerTurn.whiteAttack)
         {
             foreach (GameObject piece in playerWhite)
@@ -173,16 +182,27 @@ public class Game : MonoBehaviour
         Debug.Log($"Current turn: {currentTurn}");
     }
 
+    [ClientRpc]
+    public void ClearTurnElements_ClientRPC() => ClearTurnElements();
     public static void ClearTurnElements()
     {
         MovePlate.DestroyMovePlates();
         HealthBar.DestroyHealthBar();
     }
 
-    public void SkipCurrentTurn()
+    [ServerRpc]
+    public void SkipCurrentTurn_ServerRPC(ServerRpcParams serverRpcParams = default)
     {
-        ClearTurnElements();
-        NextTurn();
+        var currentPlayer = Singleton.GetPlayer(serverRpcParams);
+        bool HasPermission(Permissions perm) => currentPlayer.HasPermissions(Singleton.Game.GetCurrentPlayer(), perm);
+
+        if ((Singleton.Game.GetCurrentTurnType() == TurnType.move && HasPermission(Permissions.Move))
+            || (Singleton.Game.GetCurrentTurnType() == TurnType.attack
+                && (HasPermission(Permissions.Attack) || HasPermission(Permissions.Heal))))
+        {
+            ClearTurnElements();
+            NextTurn();
+        }
     }
 
     public void Update()
@@ -192,7 +212,9 @@ public class Game : MonoBehaviour
             gameOver = false;
 
             //Using UnityEngine.SceneManagement is needed here
-            SceneManager.LoadScene("Game"); //Restarts the game by loading the scene over again
+            SceneManager.LoadScene("Main menu"); //Restarts the game by loading the scene over again
+
+            // TODO: multiplayer
         }
         if (Input.GetKeyDown(KeyCode.Escape))
         {
@@ -200,12 +222,13 @@ public class Game : MonoBehaviour
         }
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            SkipCurrentTurn();
+            SkipCurrentTurn_ServerRPC();
         }
     }
 
     public void Winner(string playerWinner)
     {
+        // TODO: multiplayer
         gameOver = true;
 
         //Using UnityEngine.UI is needed here

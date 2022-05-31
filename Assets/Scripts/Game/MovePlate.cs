@@ -45,36 +45,7 @@ public class MovePlate : MonoBehaviour
         GameObject controller = Singleton.GameController;
         Chessman me = reference.GetComponent<Chessman>();
 
-        if (type == MovePlateType.move)
-        {
-            //Set the Chesspiece's original location to be empty
-            Singleton.Game.SetPositionEmpty(me.GetXBoard(), me.GetYBoard());
-
-            //Move reference chess piece to this position
-            me.SetCoords(matrixX, matrixY);
-
-            //Update the matrix
-            Singleton.Game.SetPosition(reference);
-        }
-        else if (type == MovePlateType.attack)
-        {
-            GameObject cp = Singleton.Game.GetPosition(matrixX, matrixY);
-            Chessman cm = cp.GetComponent<Chessman>();
-
-            cm.DealDamage(me.GetDamage());
-            if (cm.GetHealth() <= 0) Destroy(cp);
-        }
-        else if (type == MovePlateType.heal)
-        {
-            GameObject cp = Singleton.Game.GetPosition(matrixX, matrixY);
-            Chessman cm = cp.GetComponent<Chessman>();
-
-            cm.HealHealth();
-            me.SetHealCooldown();
-        }
-
-        //Switch Current Player
-        Singleton.Game.NextTurn();
+        me.ProcessMovePlate_ServerRPC(type, matrixX, matrixY);
 
         //Destroy the move plates including self
         Game.ClearTurnElements();

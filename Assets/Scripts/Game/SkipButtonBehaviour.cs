@@ -15,7 +15,6 @@ public class SkipButtonBehaviour : MonoBehaviour
 
     public void OnButtonPress()
     {
-        Debug.Log("OnButtonPress");
-        Singleton.Game.SkipCurrentTurn();
+        Singleton.Game.SkipCurrentTurn_ServerRPC();
     }
 }

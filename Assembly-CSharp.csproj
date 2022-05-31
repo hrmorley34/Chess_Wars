@@ -42,8 +42,10 @@
      <Compile Include="Assets\Scripts\MainMenu.cs" />
      <Compile Include="Assets\Scripts\Game\HealthBar.cs" />
      <Compile Include="Assets\Scripts\Game\Chessman.cs" />
+     <Compile Include="Assets\Scripts\Game\Player.cs" />
      <Compile Include="Assets\Scripts\Game\Singleton.cs" />
      <Compile Include="Assets\Scripts\Game\MovePlate.cs" />
+     <Compile Include="Assets\Scripts\Game\Player.cs" />
     <Reference Include="UnityEngine">
         <HintPath>C:\Program Files\Unity\Hub\Editor\2021.3.3f1\Editor\Data\Managed\UnityEngine\UnityEngine.dll</HintPath>
     </Reference>

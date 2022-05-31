@@ -9,6 +9,7 @@ TagManager:
   - RestartText
   - Canvas
   - HealthBar
+  - NetworkManager
   layers:
   - Default
   - TransparentFX
